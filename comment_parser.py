@@ -3,11 +3,10 @@ import googleapiclient.discovery
 import csv
 
 DEVELOPER_KEY = 'AIzaSyDiQ_t5i5Gm58d6mLwOc7HALKfPAVZ-1Ic'
-VIDEO_ID = "7GuRuB9anK8"
 comment_payload = []
 
 
-def youtube(nextPageToken=None):
+def youtube(VIDEO_ID, nextPageToken=None):
     # Disable OAuthlib's HTTPS verification when running locally.
     # *DO NOT* leave this option enabled in production.
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
@@ -49,10 +48,10 @@ def youtubechild(NextParentId, nextPageToken=None):
     return response
 
 
-def main():
+def scrapper(VIDEO_ID):
     # Скачиваем комментарии
     print('download comments')
-    response = youtube()
+    response = youtube(VIDEO_ID)
     items = response.get("items")
     nextPageToken = response.get("nextPageToken")  # скачивается порциями, на каждую следующую выдаётся указатель
     i = 1
@@ -85,7 +84,7 @@ def main():
 
     # Сохраняем комментарии и реплаи на них в файл csv
     print("Open csv file")
-    with open('ru-train.csv', 'w',
+    with open('payload.csv', 'w',
               encoding="utf-8") as csv_file:  # конструкция with, чтобы файл закрылся автоматом после всех команд
         writer = csv.writer(csv_file, quoting=csv.QUOTE_ALL,
                             lineterminator='\r')  # использовал двойные кавычки и разделитель запятую, такой формат отлично открывается через LibreOffice Calc
@@ -158,9 +157,3 @@ def main():
             writer.writerow(row)
 
     print("done")
-
-
-if __name__ == "__main__":
-    main()
-
-# Enter video id
