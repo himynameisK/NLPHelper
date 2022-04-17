@@ -22,13 +22,14 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 primary_data_en = config.get('FILES', 'source_en')
-primary_data_ru = config.get('FILES', 'source_ru') # каталог для исходящих данных
+primary_data_ru = config.get('FILES', 'source_ru')  # каталог для исходящих данных
 stopwords_en = config.get('FILES', 'stopwords_en')
 stopwords_ru = config.get('FILES', 'stopwords_ru')
 model_en = config.get('FILES', 'model_en')
 model_ru = config.get('FILES', 'model_ru')
 data_for_test = config.get('FILES', 'data_for_test')
 project_path = config.get('FILES', 'project_path')
+pg_dsn = config.get('DB', 'pg_dsn')  # строка подключения к БД
 
 allowed = [677169336]
 
@@ -101,7 +102,6 @@ processed_features_ru = vectorizer_ru.fit_transform(data_cleansing_ru(features_r
 ru_model = joblib.load(model_ru)
 en_model = joblib.load(model_en)
 
-
 api_key = config.get('KEYS', 'api')
 TOKEN = config.get('KEYS', 'token')
 my_id = config.get('KEYS', 'my_id')
@@ -116,22 +116,29 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['analyze-en'])
 def analysys(message):
+    logger.info('<---- Processing BEGIN EN')
     if message.chat.id not in allowed:
         bot.reply_to(message, 'Forbidden')
+        logger.error('Forbidden user ' + str(message.chat.id) + "  tried to use the bot")
     else:
         URL = message.text[11:].strip()
-        #'http://www.youtube.com/watch?v=ZFqlHhCNBOI'
+        # 'http://www.youtube.com/watch?v=ZFqlHhCNBOI'
         regex = re.compile(
             r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/(watch\?v=|embed/|v/|.+\?v=)?(?P<id>[A-Za-z0-9\-=_]{11})')
         match = regex.match(URL)
         if not match:
-            bot.reply_to(message, 'Incorrect URL')
+            logger.error('incorrect URL request ' + URL)
+            bot.reply_to(message, 'Incorrect URL\n' + URL)
+            logger.info('<---- Processing END RU (with errors)')
+        logger.info('Starting to analyze video ... ' + URL)
         VIDEO_ID = match.group('id')
         print(VIDEO_ID)
         try:
             comment_parser.scrapper(VIDEO_ID)
-        except:
-            bot.reply_to(message, 'Sorry, try again in 24 hours')
+        except Exception as e:
+            logger.error('cannot reach Youtube: {ex}'.format(ex=str(e)))
+            bot.reply_to(message, 'Sorry, cannot reach Youtube: {ex}'.format(ex=str(e)))
+            logger.info('<---- Processing END EN (with errors)')
             return
         url_df = pd.read_csv(data_for_test)
         most_liked_comment = url_df['likeCount'].idxmax()
@@ -141,33 +148,41 @@ def analysys(message):
         neg_count = result.count('negative')
         neu_count = result.count('neutral')
         visualize.create_image([pos_count, neg_count, neu_count])
-        photo = open(project_path+os.sep+'visual.png', 'rb')
+        photo = open(project_path + os.sep + 'visual.png', 'rb')
         analysys_descr = 'По результатам анализа выявлено следующее: \nПозитивных комментариев {} \nНегативных ' \
                          'комментариев {} \nНейтральных комментариев {} \nКомментарий с наибольшим числом лайков\n\n{' \
                          '}'.format(pos_count, neg_count, neu_count, url_df.at[most_liked_comment,
-                                                                                     'textDisplay'])
+                                                                               'textDisplay'])
         bot.send_photo(message.chat.id, photo, caption=analysys_descr)
-
+        logger.info('<---- Processing END EN')
 
 
 @bot.message_handler(commands=['analyze-ru'])
 def analysys(message):
+    logger.info('<---- Processing BEGIN RU')
     if message.chat.id not in allowed:
         bot.reply_to(message, 'Forbidden')
+        logger.error('Forbidden user ' + str(message.chat.id) + "  tried to use the bot")
+        return
     else:
         URL = message.text[11:].strip()
-        #'http://www.youtube.com/watch?v=ZFqlHhCNBOI'
+        # 'http://www.youtube.com/watch?v=ZFqlHhCNBOI'
         regex = re.compile(
             r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/(watch\?v=|embed/|v/|.+\?v=)?(?P<id>[A-Za-z0-9\-=_]{11})')
         match = regex.match(URL)
         if not match:
-            bot.reply_to(message, 'Incorrect URL')
+            logger.error('incorrect URL request ' + URL)
+            bot.reply_to(message, 'Incorrect URL\n' + URL)
+            logger.info('<---- Processing END RU (with errors)')
+            return
+        logger.info('Starting to analyze video ... ' + URL)
         VIDEO_ID = match.group('id')
-        print(VIDEO_ID)
         try:
             comment_parser.scrapper(VIDEO_ID)
-        except:
-            bot.reply_to(message, 'Sorry, try again in 24 hours')
+        except Exception as e:
+            logger.error('cannot reach Youtube: {ex}'.format(ex=str(e)))
+            bot.reply_to(message, 'Sorry, cannot reach Youtube: {ex}'.format(ex=str(e)))
+            logger.info('<---- Processing END RU (with errors)')
             return
         url_df = pd.read_csv(data_for_test)
         most_liked_comment = url_df['likeCount'].idxmax()
@@ -177,12 +192,14 @@ def analysys(message):
         neg_count = result.count('negative')
         neu_count = result.count('neutral')
         visualize.create_image([pos_count, neg_count, neu_count])
-        photo = open(project_path+os.sep+'visual.png', 'rb')
+        photo = open(project_path + os.sep + 'visual.png', 'rb')
         analysys_descr = 'По результатам анализа выявлено следующее: \nПозитивных комментариев {} \nНегативных ' \
                          'комментариев {} \nНейтральных комментариев {} \nКомментарий с наибольшим числом лайков\n{' \
                          '}'.format(pos_count, neg_count, neu_count, url_df.at[most_liked_comment,
-                                                                                     'textDisplay'])
+                                                                               'textDisplay'])
         bot.send_photo(message.chat.id, photo, caption=analysys_descr)
+
+        logger.info('<---- Processing END RU')
 
 
 bot.infinity_polling()
