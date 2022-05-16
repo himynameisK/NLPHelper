@@ -22,14 +22,14 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 primary_data_en = config.get('FILES', 'source_en')
-primary_data_ru = config.get('FILES', 'source_ru')  # каталог для исходящих данных
+primary_data_ru = config.get('FILES', 'source_ru')  # каталог датасетов
 stopwords_en = config.get('FILES', 'stopwords_en')
-stopwords_ru = config.get('FILES', 'stopwords_ru')
+stopwords_ru = config.get('FILES', 'stopwords_ru')  # каталог стоп слов
 model_en = config.get('FILES', 'model_en')
-model_ru = config.get('FILES', 'model_ru')
-data_for_test = config.get('FILES', 'data_for_test')
-project_path = config.get('FILES', 'project_path')
+model_ru = config.get('FILES', 'model_ru')  # каталог расположения моделей
+project_path = config.get('FILES', 'project_path')  # каталог проекта
 pg_dsn = config.get('DB', 'pg_dsn')  # строка подключения к БД
+data_for_test = config.get('FILES', 'data_for_test')
 
 allowed = [677169336]
 
@@ -132,7 +132,6 @@ def analysys(message):
             logger.info('<---- Processing END RU (with errors)')
         logger.info('Starting to analyze video ... ' + URL)
         VIDEO_ID = match.group('id')
-        print(VIDEO_ID)
         try:
             comment_parser.scrapper(VIDEO_ID)
         except Exception as e:
@@ -147,11 +146,12 @@ def analysys(message):
         pos_count = result.count('positive')
         neg_count = result.count('negative')
         neu_count = result.count('neutral')
-        visualize.create_image([pos_count, neg_count, neu_count])
+        spam_count = result.count('spam')
+        visualize.create_image([pos_count, neg_count, neu_count, spam_count])
         photo = open(project_path + os.sep + 'visual.png', 'rb')
         analysys_descr = 'По результатам анализа выявлено следующее: \nПозитивных комментариев {} \nНегативных ' \
-                         'комментариев {} \nНейтральных комментариев {} \nКомментарий с наибольшим числом лайков\n\n{' \
-                         '}'.format(pos_count, neg_count, neu_count, url_df.at[most_liked_comment,
+                         'комментариев {} \nНейтральных комментариев {} \n Спам-комментарии (боты) {} \nКомментарий с наибольшим числом лайков\n\n{' \
+                         '}'.format(pos_count, neg_count, neu_count, spam_count, url_df.at[most_liked_comment,
                                                                                'textDisplay'])
         bot.send_photo(message.chat.id, photo, caption=analysys_descr)
         logger.info('<---- Processing END EN')

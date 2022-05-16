@@ -4,7 +4,7 @@ import numpy as np
 
 # Creating dataset
 def create_image(data_array):
-    cars = ['positive', 'negative', 'neutral']
+    cars = ['positive', 'negative', 'neutral', 'spam']
 
     # Creating plot
     fig = plt.figure(figsize=(10, 7))
